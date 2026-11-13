@@ -256,6 +256,13 @@
   function labelOf(t){ return LABELS[t] || ''; }
   function pickOf(day){ return state.picks.filter(function(p){ return p.day === day; })[0]; }
 
+  // 자리가 남아 있는 요일을 '월,화,수' 형태로 표시
+  function openDays(w){
+    return w.days.filter(function(d){
+      return d.options.some(function(o){ return o.remaining > 0; });
+    }).map(function(d){ return d.day.charAt(0); }).join(',');
+  }
+
   function buildWorkplaces(){
     // 목록을 다시 그리기 전에 패널을 안전한 곳으로 옮겨 둠
     $('panelHome').appendChild($('slotPanel'));
@@ -277,7 +284,7 @@
       row.innerHTML =
         '<div class="slot-left"><div class="slot-round">' + esc(w.name) + '</div></div>' +
         '<div class="slot-right"><div class="slot-seats">' +
-        (full ? '마감' : '신청 가능 ' + w.availableDays + '개 요일') + '</div><div class="slot-radio"></div></div>';
+        (full ? '마감' : '신청 가능 ' + openDays(w)) + '</div><div class="slot-radio"></div></div>';
       if (!full){
         row.addEventListener('click', function(){
           if (state.wpName !== w.name){ state.wpName = w.name; state.picks = []; }
