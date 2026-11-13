@@ -95,6 +95,16 @@
   .again-btn{ height:46px; padding:0 22px; border-radius:9px; border:1.5px solid var(--gray-200); background:var(--white); color:var(--ink); font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; }
   .hide{ display:none; }
 
+  .modal-overlay{ position:fixed; inset:0; background:rgba(22,27,46,0.5); display:none; align-items:center; justify-content:center; padding:20px; z-index:50; }
+  .modal-overlay.show{ display:flex; }
+  .modal{ width:100%; max-width:380px; background:var(--white); border-radius:14px; padding:26px 22px 20px; box-shadow:0 12px 40px rgba(22,27,46,0.25); }
+  .modal-icon{ width:40px; height:40px; border-radius:50%; background:#FBE9E6; color:var(--red); font-weight:800; font-size:20px; display:flex; align-items:center; justify-content:center; margin-bottom:14px; }
+  .modal-title{ font-size:17px; font-weight:800; margin:0 0 8px; }
+  .modal-body{ font-size:14px; color:var(--gray-600); line-height:1.7; white-space:pre-line; margin:0 0 20px; }
+  .modal-body ul{ margin:0; padding-left:18px; }
+  .modal-btn{ width:100%; height:46px; border:none; border-radius:9px; background:var(--blue-600); color:var(--white); font-family:inherit; font-size:15px; font-weight:700; cursor:pointer; }
+  .modal-btn:active{ background:var(--blue-700); }
+
   @media (max-width:420px){ .field-grid{ grid-template-columns:1fr; } h1{ font-size:21px; } }
 </style>
 </head>
@@ -104,9 +114,10 @@
   <header>
     <h1>유한대학교 국가근로<br>희망 근로지 신청</h1>
     <div class="subtitle">국가근로 희망 근로지 신청 접수</div>
-    <p>희망 근로지 1곳을 선택한 뒤, 근로 가능한 요일을 최대 2개까지 고르고 <br> 요일별로 시간(종일 / 오전 / 오후)을 선택해 주세요.</p>
+    <p>희망 근로지 1곳을 선택한 뒤,<br> 근로 가능한 요일을 최대 2개까지 고르고 <br>요일별로 시간(종일 / 오전 / 오후)을 선택해 주세요.</p>
     <p>선착순으로 마감되며, 신청 가능한 근무에 신청을 완료하면 접수된 것입니다.</p>
     <p>신청이 완료된 학생은 담당부서에서 면접 후 최종 결정 됩니다.</p>
+    <p>신청이 모두 취소된 학생은 다시 신청 가능합니다.</p>
     <div class="header-rule"></div>
   </header>
 
@@ -164,6 +175,15 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="modalOverlay" role="alertdialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalBody">
+  <div class="modal">
+    <div class="modal-icon">!</div>
+    <h3 class="modal-title" id="modalTitle"></h3>
+    <div class="modal-body" id="modalBody"></div>
+    <button type="button" class="modal-btn" id="modalOk">확인</button>
+  </div>
+</div>
+
 <div class="footer-bar" id="footerBar">
   <div class="footer-inner">
     <div class="footer-summary" id="footerSummary"></div>
@@ -174,7 +194,7 @@
 <script>
 (function(){
   // ★ Apps Script 웹 앱 배포 URL
-  var API_URL = 'https://script.google.com/macros/s/AKfycbzxZQim6tnsLbD7GWfjpFhUkH_ypn-hXn15ckt_BAVM-KZgd-ESKywdm9yT5SThsx0USw/exec';
+  var API_URL = 'https://script.google.com/macros/s/AKfycbzOoTzxnwstQfZE_q-sdcgejuDBRMqjJgH7D1Uk-mg6gT8ujawXHhq5Qhn9QFlJ0Y8Y/exec';
   var MAX_PICKS = 2;
 
   // workplaces: [{name, totalRemaining, slots:[{day,time,capacity,booked,remaining}]}]
@@ -191,6 +211,29 @@
   function apiReady(){ return API_URL && API_URL.indexOf('YOUR_') !== 0; }
   function findWp(name){ return state.workplaces.filter(function(w){ return w.name === name; })[0]; }
   function isPicked(day, time){ return state.picks.some(function(p){ return p.day === day && p.time === time; }); }
+  var modalOverlay = $('modalOverlay'), modalAfter = null;
+  function showAlert(title, msg, items, after){
+    $('modalTitle').textContent = title;
+    var body = $('modalBody');
+    body.textContent = msg || '';
+    if (items && items.length){
+      var ul = document.createElement('ul');
+      items.forEach(function(t){ var li = document.createElement('li'); li.textContent = t; ul.appendChild(li); });
+      body.appendChild(ul);
+    }
+    modalAfter = after || null;
+    modalOverlay.classList.add('show');
+    $('modalOk').focus();
+  }
+  function closeAlert(){
+    modalOverlay.classList.remove('show');
+    var fn = modalAfter; modalAfter = null;
+    if (fn) fn();
+  }
+  $('modalOk').addEventListener('click', closeAlert);
+  modalOverlay.addEventListener('click', function(e){ if (e.target === modalOverlay) closeAlert(); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && modalOverlay.classList.contains('show')) closeAlert(); });
+
   function showError(msg){ selectionErrorEl.textContent = msg; selectionErrorEl.classList.add('show'); }
   function clearError(){ selectionErrorEl.classList.remove('show'); }
 
@@ -267,7 +310,7 @@
         // 같은 요일이면 시간만 바꿔서 선택
         state.picks = state.picks.map(function(p){ return p === same ? { day: day, time: time } : p; });
       } else if (state.picks.length >= MAX_PICKS){
-        showError('요일은 최대 ' + MAX_PICKS + '개까지 선택할 수 있습니다. 다른 요일을 선택하려면 기존 선택을 먼저 해제해 주세요.');
+        showAlert('요일은 최대 ' + MAX_PICKS + '개까지 선택할 수 있습니다', '다른 요일을 선택하려면 이미 선택한 요일의 선택을 먼저 해제해 주세요.');
         return;
       } else {
         state.picks.push({ day: day, time: time });
@@ -339,8 +382,18 @@
     var hasSel = !!state.wpName && state.picks.length > 0;
     if (!hasSel) showError('희망 근로지와 근로 가능 요일·시간을 선택해 주세요.'); else clearError();
     if (v.indexOf(false) !== -1 || !hasSel){
-      var first = document.querySelector('.invalid, .selection-error.show');
-      if (first) first.scrollIntoView({ block:'center' });
+      var problems = [];
+      if (!v[0]) problems.push('성명을 입력해 주세요.');
+      if (!v[1]) problems.push('학과를 입력해 주세요.');
+      if (!v[2]) problems.push('학번은 숫자 9자리로 입력해 주세요.');
+      if (!v[3]) problems.push('연락처를 입력해 주세요.');
+      if (!state.wpName) problems.push('희망 근로지를 선택해 주세요.');
+      else if (!state.picks.length) problems.push('근로 가능 요일과 시간을 선택해 주세요.');
+      showAlert('입력 내용을 확인해 주세요', '', problems, function(){
+        var first = document.querySelector('.field.invalid input');
+        if (first) first.focus();
+        else { var t = document.querySelector('.selection-error.show'); if (t) t.scrollIntoView({ block:'center' }); }
+      });
       return;
     }
     if (!apiReady()){
@@ -360,7 +413,7 @@
     fetch(API_URL, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body: JSON.stringify(payload) })
       .then(function(r){ return r.json(); })
       .then(function(res){
-        if (!res.success) throw new Error(res.message || '제출 중 오류가 발생했습니다.');
+        if (!res.success){ var er = new Error(res.message || '제출 중 오류가 발생했습니다.'); er.code = res.code; throw er; }
         function row(l, val){ return '<div class="receipt-row"><span>' + l + '</span><span>' + esc(val) + '</span></div>'; }
         var html = row('성명', payload.name) + row('학과', payload.dept) + row('학번', payload.sid) +
           row('연락처', payload.phone) + row('근로지', res.workplace);
@@ -370,7 +423,21 @@
         window.scrollTo(0, 0);
       })
       .catch(function(err){
-        showError(err.message || '제출 중 오류가 발생했습니다. 다시 시도해 주세요.');
+        var title = '신청 중 오류가 발생했습니다', msg = err.message || '잠시 후 다시 시도해 주세요.';
+        var after = null;
+        if (err.code === 'DUPLICATE'){
+          title = '이미 신청된 학번입니다';
+          after = function(){ var f = document.querySelector('[data-field="sid"]'); f.classList.add('invalid'); $('sid').focus(); };
+        } else if (err.code === 'FULL'){
+          title = '선택하신 근무가 마감되었습니다';
+          after = function(){ var t = $('slotList'); if (t) t.scrollIntoView({ block:'center' }); };
+        } else if (err instanceof TypeError || /JSON|fetch|network/i.test(String(err.message))){
+          title = '네트워크 오류';
+          msg = '인터넷 연결을 확인한 뒤 다시 시도해 주세요. 계속 문제가 생기면 담당 부서로 문의해 주세요.';
+        } else if (/학번은 숫자/.test(msg)){
+          title = '학번을 확인해 주세요';
+        }
+        showAlert(title, msg, null, after);
         loadSchedule();
       })
       .then(function(){
