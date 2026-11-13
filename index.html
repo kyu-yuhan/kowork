@@ -260,7 +260,7 @@
   function openDays(w){
     return w.days.filter(function(d){
       return d.options.some(function(o){ return o.remaining > 0; });
-    }).map(function(d){ return d.day.charAt(0); }).join('/');
+    }).map(function(d){ return d.day === '협의' ? '협의' : d.day.charAt(0); }).join('/');
   }
 
   function buildWorkplaces(){
