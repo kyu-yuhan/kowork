@@ -256,11 +256,11 @@
   function labelOf(t){ return LABELS[t] || ''; }
   function pickOf(day){ return state.picks.filter(function(p){ return p.day === day; })[0]; }
 
-  // 자리가 남아 있는 요일을 '월,화,수' 형태로 표시
+  // 자리가 남아 있는 요일을 '월/화/수' 형태로 표시
   function openDays(w){
     return w.days.filter(function(d){
       return d.options.some(function(o){ return o.remaining > 0; });
-    }).map(function(d){ return d.day.charAt(0); }).join(',');
+    }).map(function(d){ return d.day.charAt(0); }).join('/');
   }
 
   function buildWorkplaces(){
