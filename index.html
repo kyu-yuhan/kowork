@@ -61,6 +61,12 @@
   .slot[data-full="true"] .slot-round,.slot[data-full="true"] .slot-time,.slot[data-full="true"] .slot-seats{ color:var(--gray-400); }
   .slot[data-full="true"] .slot-radio,.slot[data-full="true"] .slot-check{ display:none; }
 
+  .group-head{ display:flex; align-items:center; gap:8px; margin:14px 0 2px; }
+  .group-head:first-child{ margin-top:0; }
+  .group-badge{ font-size:12.5px; font-weight:800; padding:4px 10px; border-radius:6px; }
+  .group-badge.in{ background:var(--blue-100); color:var(--blue-700); }
+  .group-badge.out{ background:#FFF1E0; color:#B25E00; }
+  .group-count{ font-size:12.5px; color:var(--gray-400); }
   .slot-panel{ margin:2px 0 6px 8px; padding:6px 0 4px 16px; border-left:3px solid var(--blue-100); }
   .panel-head{ display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:2px 10px; margin:6px 0 14px; }
   .panel-title{ font-size:14.5px; font-weight:700; }
@@ -116,12 +122,14 @@
 
   <header>
     <h1>유한대학교 국가근로<br>희망 근로지 신청</h1>
-    <div class="subtitle">국가근로 희망 근로지 신청 접수</div>
-    <p>희망 근로지 1곳을 선택한 뒤,<br> 근로 가능한 요일을 최대 2개까지 고르고 <br>요일별로 시간(종일 / 오전 / 오후)을 선택해 주세요.</p>
-    <p>선착순으로 마감되며, 신청 가능한 근무에 신청을 완료하면 접수된 것입니다.</p>
-    <p>신청이 완료된 학생은 담당부서에서 면접 후 최종 결정 됩니다.</p>
-    <p>신청이 모두 취소된 학생은 다시 신청 가능합니다.</p>
-    <p>(신청 취소는 신청부서에서 관리자만 취소 가능)</p>
+    <div class="subtitle">2027학년도 1학기 국가근로 희망 근로지 신청 접수</div>
+    <p><b>희망 근로지 1곳을 선택한 뒤,<br> 근로 가능한 요일을 최대 2개까지 고르고 <br>요일별로 시간(종일 / 오전 / 오후)을 선택해 주세요.</b></p>
+    <p>선착순으로 마감되며, 신청 가능한 근무지에 신청을 완료하면 접수된 것입니다.</p>
+    <p>신청이 완료된 학생은 담당부서에서 면접 후 최종 선발이 결정 됩니다.</p>
+    <p>면접 후 탈락자는 다시 신청하여야 합니다.</p>
+    <p>탈락자만 다시 신청 가능합니다.</p>
+    <p>(신청 취소 불가능)</p>
+    <p>고민하고 신청하세요. <br>탈락 후 신청 가능한 자리가 없을 수 있습니다.</p>
     <div class="header-rule"></div>
   </header>
 
@@ -201,7 +209,7 @@
 <script>
 (function(){
   // ★ Apps Script 웹 앱 배포 URL
-  var API_URL = 'https://script.google.com/macros/s/AKfycbyuq_Pyqbj5JPkxle3gXKy_blzGzJGhnIBC5qQivhViuHl0LGL41XFPR4lzjgqxQEyK7w/exec';
+  var API_URL = 'https://script.google.com/macros/s/AKfycbyCOD-rv_hPLLj4HwEgXnh6B4K5YFDlV_aEefhVGl_c1X52Jk0CBL7M21799AZPw6yOYg/exec';
   var MAX_PICKS = 2;
 
   // workplaces: [{name, totalRemaining, slots:[{day,time,capacity,booked,remaining}]}]
@@ -252,7 +260,14 @@
     // 목록을 다시 그리기 전에 패널을 안전한 곳으로 옮겨 둠
     $('panelHome').appendChild($('slotPanel'));
     wpListEl.innerHTML = '';
-    state.workplaces.forEach(function(w){
+    ['교내', '교외'].forEach(function(cat){
+    var group = state.workplaces.filter(function(w){ return (w.category || '교내') === cat; });
+    if (!group.length) return;
+    var head = document.createElement('div');
+    head.className = 'group-head';
+    head.innerHTML = '<span class="group-badge ' + (cat === '교외' ? 'out' : 'in') + '">' + cat + ' 근로지</span><span class="group-count">' + group.length + '곳</span>';
+    wpListEl.appendChild(head);
+    group.forEach(function(w){
       var full = w.availableDays <= 0;
       var sel = state.wpName === w.name;
       var row = document.createElement('button');
@@ -272,6 +287,7 @@
       }
       wpListEl.appendChild(row);
       if (sel) wpListEl.appendChild($('slotPanel')); // 선택한 근로지 바로 아래에 요일·시간 선택 표시
+    });
     });
   }
 
