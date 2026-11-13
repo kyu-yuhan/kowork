@@ -61,6 +61,9 @@
   .slot[data-full="true"] .slot-round,.slot[data-full="true"] .slot-time,.slot[data-full="true"] .slot-seats{ color:var(--gray-400); }
   .slot[data-full="true"] .slot-radio,.slot[data-full="true"] .slot-check{ display:none; }
 
+  .slot-panel{ margin:2px 0 6px 8px; padding:6px 0 4px 16px; border-left:3px solid var(--blue-100); }
+  .panel-head{ display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:2px 10px; margin:6px 0 14px; }
+  .panel-title{ font-size:14.5px; font-weight:700; }
   .day-block{ margin-bottom:18px; }
   .day-block:last-child{ margin-bottom:0; }
   .day-title{ font-size:14px; font-weight:800; margin:0 0 8px 2px; }
@@ -118,6 +121,7 @@
     <p>선착순으로 마감되며, 신청 가능한 근무에 신청을 완료하면 접수된 것입니다.</p>
     <p>신청이 완료된 학생은 담당부서에서 면접 후 최종 결정 됩니다.</p>
     <p>신청이 모두 취소된 학생은 다시 신청 가능합니다.</p>
+    <p>(신청 취소는 신청부서에서 관리자만 취소 가능)</p>
     <div class="header-rule"></div>
   </header>
 
@@ -156,14 +160,17 @@
       <div class="slot-list" id="workplaceList"><div class="state-msg">근로지 목록을 불러오는 중입니다…</div></div>
     </section>
 
-    <section>
-      <div class="section-head">
-        <div class="section-title">근로 가능 요일·시간 선택</div>
-        <div class="section-sub">요일별 1개 · 최대 2개 요일</div>
+    <!-- 근로지를 선택하면 JS가 이 패널을 선택한 근로지 카드 바로 아래로 옮깁니다 -->
+    <div class="hide" id="panelHome">
+      <div class="slot-panel" id="slotPanel">
+        <div class="panel-head">
+          <div class="panel-title">근로 가능 요일·시간 선택</div>
+          <div class="section-sub">요일별 1개 · 최대 2개 요일</div>
+        </div>
+        <div class="slot-list" id="slotList"></div>
+        <div class="selection-error" id="selectionError"></div>
       </div>
-      <div class="slot-list" id="slotList"><div class="state-msg">근로지를 먼저 선택해 주세요.</div></div>
-      <div class="selection-error" id="selectionError"></div>
-    </section>
+    </div>
   </form>
 
   <div class="success-wrap" id="successWrap">
@@ -242,6 +249,8 @@
   function pickOf(day){ return state.picks.filter(function(p){ return p.day === day; })[0]; }
 
   function buildWorkplaces(){
+    // 목록을 다시 그리기 전에 패널을 안전한 곳으로 옮겨 둠
+    $('panelHome').appendChild($('slotPanel'));
     wpListEl.innerHTML = '';
     state.workplaces.forEach(function(w){
       var full = w.availableDays <= 0;
@@ -251,8 +260,7 @@
       row.setAttribute('data-full', full ? 'true' : 'false');
       row.setAttribute('data-selected', sel ? 'true' : 'false');
       row.innerHTML =
-        '<div class="slot-left"><div class="slot-round">' + esc(w.name) + '</div>' +
-        '<div class="slot-time">근무 가능 요일 ' + w.days.length + '개</div></div>' +
+        '<div class="slot-left"><div class="slot-round">' + esc(w.name) + '</div></div>' +
         '<div class="slot-right"><div class="slot-seats">' +
         (full ? '마감' : '신청 가능 ' + w.availableDays + '개 요일') + '</div><div class="slot-radio"></div></div>';
       if (!full){
@@ -263,6 +271,7 @@
         });
       }
       wpListEl.appendChild(row);
+      if (sel) wpListEl.appendChild($('slotPanel')); // 선택한 근로지 바로 아래에 요일·시간 선택 표시
     });
   }
 
@@ -392,7 +401,7 @@
       showAlert('입력 내용을 확인해 주세요', '', problems, function(){
         var first = document.querySelector('.field.invalid input');
         if (first) first.focus();
-        else { var t = document.querySelector('.selection-error.show'); if (t) t.scrollIntoView({ block:'center' }); }
+        else { var t = document.querySelector('.selection-error.show') || (!state.wpName ? wpListEl : $('slotList')); if (t) t.scrollIntoView({ block:'center' }); }
       });
       return;
     }
